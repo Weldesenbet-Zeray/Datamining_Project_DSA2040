@@ -7,10 +7,46 @@ output: html_document
 
 ```{r,warning=FALSE}
 library(tidyverse)
+library(dplyr)
 
 ```
 
 ```{r}
-data_1 <- read.csv("C:\Users\Admin\OneDrive\Documents\DSA_2040_Project\Datamining_Project_DSA2040\data\new_retail_data_2.csv")
+data_1 <- read.csv("new_retail_data_2.csv")
+data_1
+```
+
+```{r}
+data_2 <- read.csv("retail_data_1.csv")
+data_2
+```
+
+```{r}
+colnames(data_2)
+```
+```{r}
+col_names <-c()
+```
+
+
+```{r}
+colnames(data_1)
+```
+```{r}
+set.seed(50000)
+dataset_1 <- data_1 %>% 
+  sample_n(50000)
+write.csv(dataset_1,"sampled_dataset_1.csv",row.names=FALSE)
+```
+
+```{r}
+set.seed(50000)
+dataset_2 <- data_2 %>% 
+  sample_n(50000)
+write.csv(dataset_2,"sampled_dataset_2.csv",row.names=FALSE)
+```
+```{r}
+
+
 ```
 
