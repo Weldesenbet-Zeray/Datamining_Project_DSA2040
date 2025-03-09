@@ -1,0 +1,16 @@
+---
+title: "Project_1"
+author: "Weldesenbet Zeray Aregay"
+date: "2025-03-08"
+output: html_document
+---
+
+```{r,warning=FALSE}
+library(tidyverse)
+
+```
+
+```{r}
+data_1 <- read.csv("C:\Users\Admin\OneDrive\Documents\DSA_2040_Project\Datamining_Project_DSA2040\data\new_retail_data_2.csv")
+```
+
