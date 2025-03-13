@@ -5,11 +5,15 @@ date: "2025-03-08"
 output: html_document
 ---
 
+## Loading Necessary Packages:
+
 ```{r,warning=FALSE}
 library(tidyverse)
 library(dplyr)
 
 ```
+
+## Loading the Original large Data Sets:
 
 ```{r}
 data_1 <- read.csv("new_retail_data_2.csv")
@@ -21,17 +25,20 @@ data_2 <- read.csv("retail_data_1.csv")
 data_2
 ```
 
+## Exploring the Columns of each data set:
+
 ```{r}
 colnames(data_2)
 ```
+
 ```{r}
 col_names <-c()
 ```
 
-
 ```{r}
 colnames(data_1)
 ```
+
 ```{r}
 set.seed(50000)
 dataset_1 <- data_1 %>% 
@@ -45,8 +52,8 @@ dataset_2 <- data_2 %>%
   sample_n(50000)
 write.csv(dataset_2,"sampled_dataset_2.csv",row.names=FALSE)
 ```
+
 ```{r}
 
 
 ```
-
