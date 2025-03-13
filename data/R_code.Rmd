@@ -7,7 +7,7 @@ output: html_document
 
 ## Loading Necessary Packages:
 
-```{r,warning=FALSE}
+```{r,warning=FALSE,message=FALSE}
 library(tidyverse)
 library(dplyr)
 
@@ -16,12 +16,14 @@ library(dplyr)
 ## Loading the Original large Data Sets:
 
 ```{r}
-data_1 <- read.csv("new_retail_data_2.csv")
+data_1 <- read.csv("C:\\Users\\Admin\\OneDrive\\Documents\\SS_2025\\DSA2040\\Project_Dataset\\new_retail_data_2.csv")
+
 data_1
 ```
 
 ```{r}
-data_2 <- read.csv("retail_data_1.csv")
+data_2 <-read.csv("C:\\Users\\Admin\\OneDrive\\Documents\\SS_2025\\DSA2040\\Project_Dataset\\retail_data_1.csv")
+
 data_2
 ```
 
@@ -32,12 +34,10 @@ colnames(data_2)
 ```
 
 ```{r}
-col_names <-c()
-```
-
-```{r}
 colnames(data_1)
 ```
+
+## Sampling the required records from the Original data sets:
 
 ```{r}
 set.seed(50000)
@@ -53,7 +53,54 @@ dataset_2 <- data_2 %>%
 write.csv(dataset_2,"sampled_dataset_2.csv",row.names=FALSE)
 ```
 
+## Filtering the Necessary Columns:
+
 ```{r}
+necessary_columns_1 <- c("Transaction_ID", "Customer_ID", "Date", "Year", "Month", "Time", "Total_Purchases", "Amount", "Total_Amount", "Product_Category", "Product_Brand", "Product_Type", "products", "Payment_Method", "Shipping_Method", "Order_Status", "Ratings", "Customer_Segment", "Feedback")
+
+necessary_columns_2 <- c("customer_id", "age", "gender", "income_bracket", "loyalty_program", "membership_years", "churned", "transaction_id", "transaction_date", "transaction_hour", "day_of_week", "month_of_year", "product_category", "product_name", "quantity", "unit_price", "discount_applied", "payment_method", "store_location", "total_sales", "total_transactions", "total_items_purchased", "avg_items_per_transaction", "purchase_frequency", "avg_transaction_value", "total_discounts_received", "preferred_store", "product_rating", "promotion_type", "promotion_channel", "customer_city", "customer_state", "distance_to_store", "email_subscriptions", "website_visits", "social_media_engagement", "days_since_last_purchase")
 
 
 ```
+
+```{r}
+Data_1_sliced <- dataset_1 %>% select(all_of(necessary_columns_1))
+Data_2_sliced <- dataset_2 %>% select(all_of(necessary_columns_2))
+```
+
+```{r}
+Data_1_sliced
+```
+
+```{r}
+Data_2_sliced
+```
+
+# EDA of the Sliced Data sets: 
+
+### Overview of the Data
+
+```{r}
+# Check structure and summary of dataset 1
+str(Data_1_sliced)
+summary(Data_1_sliced)
+
+```
+
+
+```{r}
+# Check structure and summary of dataset 2
+str(Data_2_sliced)
+summary(Data_2_sliced)
+```
+
+### Missing Value Analysis
+
+```{r}
+colSums(is.na(Data_1_sliced))
+```
+
+```{r}
+colSums(is.na(Data_2_sliced))
+```
+
