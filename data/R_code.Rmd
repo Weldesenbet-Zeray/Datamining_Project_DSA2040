@@ -223,11 +223,17 @@ Data_1_sliced$Transaction_ID[is.na(Data_1_sliced$Transaction_ID)] <-
 sum(is.na(Data_1_sliced$Transaction_ID))
 sum(is.na(Data_1_sliced$Customer_ID))
 ```
-
+#### Checking for missing values after applying the techniques:
+Since Dataset_2_sliced has no any missing value so we are now free to procide to next stage of EDA.
 
 ```{r}
 colSums(is.na(Data_1_sliced))
 ```
+```{r}
+colSums(is.na(Data_2_sliced))
+```
+
+# Part-5) Datamining and Association Rules:
 
 
 
