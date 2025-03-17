@@ -10,6 +10,7 @@ output: html_document
 ```{r,warning=FALSE,message=FALSE}
 library(tidyverse)
 library(dplyr)
+library(lubridate)
 
 ```
 
@@ -83,7 +84,7 @@ Data_2_sliced
 ```{r}
 # Check structure and summary of dataset 1
 str(Data_1_sliced)
-summary(Data_1_sliced)
+#summary(Data_1_sliced)
 
 ```
 
@@ -91,7 +92,7 @@ summary(Data_1_sliced)
 ```{r}
 # Check structure and summary of dataset 2
 str(Data_2_sliced)
-summary(Data_2_sliced)
+#summary(Data_2_sliced)
 ```
 
 ### Missing Value Analysis
@@ -100,7 +101,139 @@ summary(Data_2_sliced)
 colSums(is.na(Data_1_sliced))
 ```
 
+
 ```{r}
 colSums(is.na(Data_2_sliced))
 ```
+
+#### Handling Missing Values of the Data_1_sliced dataset:
+✅ Best Practice
+If missing values are <5%, use imputation.
+If missing values are between 5% and 30%, decide based on feature importance.
+If missing values are >30%, consider removal unless the column is critical.
+
+#### Extracting year from the "Date" column to fill the missing values of "Year" column:
+This is because the Date column has no any missing values and since it contains year so this gives us a best way to fill the missing values of this column.
+
+But after the Date column has changed to Date type because of inconvinient format it still contains missing values so We have filled this NA's with the most frequent Date Column.
+
+```{r}
+Data_1_sliced$Date <- as.Date(Data_1_sliced$Date, format="%m/%d/%Y")
+
+#Find the Most Frequent (Mode) Date
+most_frequent_date <- Data_1_sliced %>%
+  filter(!is.na(Date)) %>%
+  count(Date) %>%
+  arrange(desc(n)) %>%
+  slice(1) %>%
+  pull(Date)
+
+print(most_frequent_date)  # Check the most frequent date
+
+#Fill NA values in Date column with the most frequent date
+Data_1_sliced$Date[is.na(Data_1_sliced$Date)] <- most_frequent_date
+
+
+Data_1_sliced <- Data_1_sliced %>% 
+  mutate(Year=ifelse(is.na(Year),year(Date),Year))   # Fill missing Year values
+```
+
+
+
+
+#### Filling the Amount,Total_Purchases and Total_Amount:
+By using the mathematical relationship of the three variables we have filled the missing values and when all the three variables are missed we have used the median of the columns. This gives as a best way of filling tje missing values with almost real values/ Optimizing the existing data points.
+```{r}
+
+Data_1_sliced <- Data_1_sliced %>%
+  mutate(
+    # Fill Total_Amount if Amount & Total_Purchases exist
+    Total_Amount = ifelse(is.na(Total_Amount) & !is.na(Amount) & !is.na(Total_Purchases), 
+                          Amount * Total_Purchases, Total_Amount),
+    
+    # Fill Amount if Total_Amount & Total_Purchases exist
+    Amount = ifelse(is.na(Amount) & !is.na(Total_Amount) & !is.na(Total_Purchases), 
+                    Total_Amount / Total_Purchases, Amount),
+    
+    # Fill Total_Purchases if Total_Amount & Amount exist
+    Total_Purchases = ifelse(is.na(Total_Purchases) & !is.na(Total_Amount) & !is.na(Amount), 
+                             Total_Amount / Amount, Total_Purchases),
+    
+    # If all are missing, fill with median
+    Amount = ifelse(is.na(Amount), median(Amount, na.rm = TRUE), Amount),
+    Total_Purchases = ifelse(is.na(Total_Purchases), median(Total_Purchases, na.rm = TRUE), Total_Purchases),
+    Total_Amount = ifelse(is.na(Total_Amount), median(Total_Amount, na.rm = TRUE), Total_Amount)
+  )
+
+```
+
+
+#### Filling the Ratings column:
+We have grouped it first by customer segmentation for better accuracy and then It is filled by the mean value of each group for the missed values and lastly is has returned to the orignal dataset format after filled using umgroup() function.
+```{r}
+Data_1_sliced <- Data_1_sliced %>% 
+  group_by(Customer_Segment) %>% 
+  mutate(Ratings = ifelse(is.na(Ratings), round(mean(Ratings, na.rm = TRUE)), Ratings)) %>% 
+  ungroup()
+Data_1_sliced
+```
+
+
+#### 🔹 Recovering Missing IDs from Related Columns 🛠️
+When Customer_ID or Transaction_ID is missing, we try to recover them by using related columns. The logic is:
+
+If a Customer_ID is missing, but the same customer has another row (same name, email, or segment), use the known ID.
+If a Transaction_ID is missing, but the same purchase details (date, total amount, product, etc.) exist, use the known transaction.
+
+
+1️⃣ Filling Missing Customer_IDs Based on Existing Data
+👉 If a customer has at least one known ID, use that ID for missing rows.
+It groups similar transactions (Customer_Segment, Date, Total_Amount).
+If a Customer_ID is missing, it fills it with the first available ID in that group.
+
+```{r}
+Data_1_sliced <- Data_1_sliced %>%
+  group_by(Customer_Segment, Date, Total_Amount) %>%  # Group by similar known attributes
+  mutate(Customer_ID = ifelse(is.na(Customer_ID), first(na.omit(Customer_ID)), Customer_ID)) %>%
+  ungroup()
+sum(is.na(Data_1_sliced$Customer_ID))
+```
+
+
+2️⃣ Filling Missing Transaction_IDs for the Same Purchase Details
+👉 If a Transaction_ID is missing, but the same customer made the same purchase, use that known transaction.
+```{r}
+Data_1_sliced <- Data_1_sliced %>%
+  group_by(Customer_ID, Date, Total_Amount, Product_Category) %>%  
+  mutate(Transaction_ID = ifelse(is.na(Transaction_ID), first(na.omit(Transaction_ID)), Transaction_ID)) %>%
+  ungroup()
+sum(is.na(Data_1_sliced$Transaction_ID))
+```
+If both Customer_ID and Transaction_ID are missing, we need a strategy to infer them intelligently.
+For now the are no missed values for both of the columns. 
+
+```{r}
+# Assign a new Customer_ID if still missing
+Data_1_sliced$Customer_ID[is.na(Data_1_sliced$Customer_ID)] <- 
+  max(Data_1_sliced$Customer_ID, na.rm = TRUE) + seq(1, sum(is.na(Data_1_sliced$Customer_ID)))
+
+# Assign a new Transaction_ID if still missing
+Data_1_sliced$Transaction_ID[is.na(Data_1_sliced$Transaction_ID)] <- 
+  max(Data_1_sliced$Transaction_ID, na.rm = TRUE) + seq(1, sum(is.na(Data_1_sliced$Transaction_ID)))
+sum(is.na(Data_1_sliced$Transaction_ID))
+sum(is.na(Data_1_sliced$Customer_ID))
+```
+
+
+```{r}
+colSums(is.na(Data_1_sliced))
+```
+
+
+
+
+
+
+
+
 
