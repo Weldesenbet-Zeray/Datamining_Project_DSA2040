@@ -235,10 +235,185 @@ colSums(is.na(Data_2_sliced))
 
 # Part-5) Datamining and Association Rules:
 
+### Convert Data into a Suitable Format
+**Step 1:** Prepare Transaction Data
+Since ARM algorithms (Apriori & FP-Growth) require transactions in a structured format, we need to convert products into a transactional dataset.
+
+```{r,warning=FALSE,message=FALSE}
+# Load necessary libraries
+library(arules)
+library(arulesViz)
+```
+
+```{r}
+# Convert products column into transaction format
+transactions <- as(split(Data_1_sliced$products, Data_1_sliced$Transaction_ID), "transactions")
+
+# View summary of transactions
+summary(transactions)
+```
+The initial datasets transaction distribution per items:
+
+```{r}
+# For Dataset 1
+cat("Dataset 1 Transaction Distribution:\n")
+table(table(Data_1_sliced$Transaction_ID))
+
+```
+```{r}
+# For Dataset 2
+cat("\nDataset 2 Transaction Distribution:\n")
+table(table(Data_2_sliced$transaction_id))
+```
+
+
+**The Sliced datasets have few multi-itemsets transaction as shown above.**
+So we have decided to use the big orignal datas transactions so as to create meaningful Association rule mining.
+Snice it betterly contains multi-itemset trabsactions.
+
+
+```{r}
+# For Dataset 1
+cat("data 1 Transaction Distribution:\n")
+table(table(data_1$Transaction_ID))
+
+```
+```{r}
+# For Dataset 2
+cat("\ndata 2 Transaction Distribution:\n")
+table(table(data_2$transaction_id))
+```
+
+### As shown above this gives us better ARM possiblity than of using the sliced datasets.
+
+# Converting the data to transactional data for the orignal datasets:
+For data_1 we have used:"Transaction_ID" and "products" columns. But For data_2 it is a bit hardet but using the most descriptive columns lets change it to trasactional data.
+```{r}
+length(unique(data_2$product_name))  # Check unique product names
+length(unique(data_2$product_id))  # Check unique product IDs
+```
+So Since the unique product names are few it is not better option to use it. So We have decided to use the "transaction_id" with "product_id" and "product_category" columns to create a better Association rule mining for the given dataset.
+
+```{r}
+data_2$item_label <- paste(data_2$product_category, data_2$product_id, sep="_")
+# Convert to transactions
+transactions_2 <- as(split(data_2$item_label, data_2$transaction_id), "transactions")
+
+# View summary
+summary(transactions_2)
+```
+
+### Step-1) Keeping Only Necessary Columns
+```{r}
+# Select necessary columns
+data_1_selected <- data_1[, c("Transaction_ID", "products")]
+data_2_selected <- data_2[, c("transaction_id", "product_id", "product_category")]
+
+# Create a combined item label for data_2
+data_2_selected$item_label <- paste(data_2_selected$product_category, data_2_selected$product_id, sep="_")
+
+# Drop the original product_id and product_category columns (since we merged them)
+data_2_selected <- data_2_selected[, c("transaction_id", "item_label")]
+
+# View first few rows
+head(data_1_selected)
+```
+```{r}
+head(data_2_selected)
+```
+
+
+### Step-2) Checking Transaction Size Distribution of Both datasets:
+Before applying Association Rule Mining (ARM), we must check if transactions contain multiple items.
+```{r}
+# Count items per transaction
+cat("Dataset 1 Transaction Distribution:\n")
+table(table(data_1_selected$Transaction_ID))
+```
+```{r}
+cat("\nDataset 2 Transaction Distribution:\n")
+table(table(data_2_selected$transaction_id))
+```
+
+
+### Step 3) Check & Handle Missing Values
+We must check for missing values and decide how to handle them.
+
+```{r}
+# Check for missing values
+cat("Missing values in Dataset 1:\n")
+colSums(is.na(data_1_selected))
+
+cat("\nMissing values in Dataset 2:\n")
+colSums(is.na(data_2_selected))
+```
+```{r}
+# Remove rows with missing values
+data_1_selected <- na.omit(data_1_selected)
+data_2_selected <- na.omit(data_2_selected)
+
+# Check for missing values
+cat("Missing values in Dataset 1:\n")
+colSums(is.na(data_1_selected))
+
+cat("\nMissing values in Dataset 2:\n")
+colSums(is.na(data_2_selected))
+```
+
+
+### Step 4) Convert to Transaction Format:
+We need to transform the dataset into a transactional format for ARM.
+
+```{r}
+# Convert Dataset 1 to transaction format
+transactions_1 <- as(split(data_1_selected$products, data_1_selected$Transaction_ID), "transactions")
+
+# Convert Dataset 2 to transaction format
+transactions_2 <- as(split(data_2_selected$item_label, data_2_selected$transaction_id), "transactions")
+
+```
+
+```{r}
+# View summary
+summary(transactions_1)
+```
+
+```{r}
+summary(transactions_2)
+
+```
+
+
+###Step 5) Run Association Rule Mining (Apriori Algorithm):
+Now We apply Apriori to find frequent itemsets and association rules.But before that lets visualize the most ferquent items so that it can help us to decide the support for the apriori algorithm for each of the datasets.
+
+
+##### Transaction_1
+```{r}
+itemFrequencyPlot(transactions_1, topN = 20)
+```
 
 
 
+```{r}
+# Run Apriori for Dataset 1
+rules_1 <- apriori(transactions_1, parameter = list(supp = 0.0000001,conf=0.01))
+inspect(sort(rules_1, by = "lift")[1:10])
 
+```
+
+#### For transaction_2:
+```{r}
+
+itemFrequencyPlot(transactions_2, topN = 20)
+```
+
+
+```{r}
+# Run Apriori for Dataset 2
+rules_2 <- apriori(transactions_2, parameter = list(supp = 0.0000001,conf=0.01))
+inspect(sort(rules_2, by = "lift")[1:10])
+```
 
 
 
