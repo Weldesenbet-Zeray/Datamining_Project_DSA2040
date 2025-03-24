@@ -269,7 +269,7 @@ table(table(Data_2_sliced$transaction_id))
 
 **The Sliced datasets have few multi-itemsets transaction as shown above.**
 So we have decided to use the big orignal datas transactions so as to create meaningful Association rule mining.
-Snice it betterly contains multi-itemset trabsactions.
+since it accurately contains multi-itemset trabsactions.
 
 
 ```{r}
@@ -389,11 +389,38 @@ Now We apply Apriori to find frequent itemsets and association rules.But before 
 
 
 ##### Transaction_1
+Lets visualize the item ferequency plot for to decide the threshould support and confidence: using *itemFrequencyPlot(transactions_1, topN = 20)* function in R.
+
+Generates a bar plot displaying the frequency of the top 20 most common items
+1)Most Frequently Purchased Items – It highlights the products that appear most often in transactions, helping to understand popular items in your dataset.
+
+2)Potential Candidates for Association Rules – Frequent items are more likely to appear in strong association rules (e.g., as antecedents or consequents).
+
+3)Threshold for Support – If you notice that certain items appear in very few transactions, you may adjust the minimum support (minsup) parameter to filter out rare items and focus on meaningful rules.
+
+4)Business Insights – Retailers can use this to identify best-selling products and decide on strategies such as bundling frequently bought items or optimizing stock.
 ```{r}
 itemFrequencyPlot(transactions_1, topN = 20)
 ```
 
 
+key takeaways:
+
+Water-related products dominate – The most frequent items in the dataset appear to be different types of water (Spring water, Bottled water, Distilled water, etc.). This suggests that water-related products are commonly purchased in transactions.
+
+Mixed product categories – Apart from water products, we also see items like Motorola Mob, Google Pixel, Samsung Galaxy (electronics) and Literary fiction, History, Self-help, Horror, Historical fiction (books). This indicates a dataset with diverse product categories.
+
+Frequent items can drive association rules – Items that frequently appear together (e.g., different types of water) might have strong association rules. For example, customers buying "Spring water" might also buy "Bottled water," leading to a strong rule like:
+{Spring water} → {Bottled water}
+
+Unusual combinations – The presence of both water-related products and electronics/books in the top 20 items suggests a broad dataset, which may lead to some unexpected association rules. You might want to check for segment-based analysis (e.g., rules within categories).
+
+
+```{r}
+frequent_itemsets <- eclat(transactions_1, parameter = list(supp = 0.000005, minlen = 2))
+# Sort by support (frequency) in descending order and inspect the results
+inspect(sort(frequent_itemsets, by = "support", decreasing = TRUE))
+```
 
 ```{r}
 # Run Apriori for Dataset 1
@@ -402,6 +429,7 @@ inspect(sort(rules_1, by = "lift")[1:10])
 
 ```
 
+
 #### For transaction_2:
 ```{r}
 
@@ -409,12 +437,338 @@ itemFrequencyPlot(transactions_2, topN = 20)
 ```
 
 
+
+
+```{r}
+frequent_itemsets <- eclat(transactions_2, parameter = list(supp = 0.000005, minlen = 2))
+# Sort by support (frequency) in descending order and inspect the results
+inspect(sort(frequent_itemsets_2, by = "support", decreasing = TRUE))
+```
+
 ```{r}
 # Run Apriori for Dataset 2
 rules_2 <- apriori(transactions_2, parameter = list(supp = 0.0000001,conf=0.01))
 inspect(sort(rules_2, by = "lift")[1:10])
 ```
 
+## **Discretization for Dataset 1**
+### **1. Discretizing Amount and Total Purchases (Equal-Width Binning)**
+Equal-width binning divides a numeric column into bins of equal range.
 
+```{r}
+# Define number of bins
+num_bins <- 4  
+
+# Apply equal-width binning to Amount
+Data_1_sliced$Amount_Bin <- cut(Data_1_sliced$Amount, breaks = num_bins, labels = FALSE, include.lowest = TRUE)
+
+# Apply equal-width binning to Total_Purchases
+Data_1_sliced$Total_Purchases_Bin <- cut(Data_1_sliced$Total_Purchases, breaks = num_bins, labels = FALSE, include.lowest = TRUE)
+
+# View the first few rows
+head(Data_1_sliced[, c("Amount", "Amount_Bin", "Total_Purchases", "Total_Purchases_Bin")])
+```
+
+---
+
+## **Discretization for Dataset 2**
+### **1. Discretizing Age (Equal-Frequency Binning)**
+Equal-frequency binning ensures that each bin has approximately the same number of data points.
+
+```{r}
+# Define number of bins
+num_bins <- 4
+
+# Create equal-frequency bins for Age
+Data_2_sliced$Age_Bin <- ntile(Data_2_sliced$age, num_bins)
+
+# View the first few rows
+head(Data_2_sliced[, c("age", "Age_Bin")])
+```
+
+### **2. Discretizing Transaction Hour (Custom Binning)**
+We can categorize transaction hours into time-of-day groups (e.g., Morning, Afternoon, Evening, Night).
+
+```{r}
+# Define custom bins
+Data_2_sliced$Transaction_Time_Bin <- cut(Data_2_sliced$transaction_hour, 
+                                          breaks = c(0, 6, 12, 18, 24), 
+                                          labels = c("Night", "Morning", "Afternoon", "Evening"),
+                                          include.lowest = TRUE)
+
+# View the first few rows
+head(Data_2_sliced[, c("transaction_hour", "Transaction_Time_Bin")])
+```
+
+```{r}
+colSums(is.na(Data_1_sliced))
+```
+
+
+# Clustering Analysis
+
+## Dataset 1: K-Means Clustering
+
+### Step 1: Select Relevant Features
+```{r}
+# Select relevant numerical features for clustering
+data_1_cluster <- Data_1_sliced[, c("Total_Purchases", "Amount", "Total_Amount")]
+```
+
+### Step 2: Handle Missing Values
+```{r}
+# Remove rows with missing values
+data_1_cluster <- na.omit(data_1_cluster)
+```
+
+### Step 3: Scale the Data
+```{r}
+# Scale numerical features for clustering
+data_1_scaled <- scale(data_1_cluster)
+```
+
+### Step 4: Determine Optimal Number of Clusters using Elbow Method
+```{r}
+# Determine optimal number of clusters using the Elbow Method
+wss <- (nrow(data_1_scaled) - 1) * sum(apply(data_1_scaled, 2, var))
+wss_values <- numeric(10)
+for (i in 1:10) {
+  set.seed(123)
+  wss_values[i] <- kmeans(data_1_scaled, centers = i, nstart = 10)$tot.withinss
+}
+
+# Plot the Elbow Method
+plot(1:10, wss_values, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares", main = "Elbow Method for Optimal K")
+```
+
+### Step 5: Apply K-Means Clustering
+
+```{r}
+# Apply K-Means clustering with optimal K (assuming 4 clusters)
+set.seed(123)
+kmeans_result_1 <- kmeans(data_1_scaled, centers = 4, nstart = 10)
+
+# Add cluster labels to the original dataset
+Data_1_sliced$Cluster <- as.factor(kmeans_result_1$cluster)
+```
+
+### Step 6: Visualize the Clusters
+```{r}
+# Visualize clusters using a scatter plot
+library(ggplot2)
+ggplot(Data_1_sliced, aes(x = Total_Purchases, y = Amount, color = Cluster)) +
+  geom_point() +
+  labs(title = "K-Means Clustering for Dataset 1", x = "Total Purchases", y = "Amount")
+```
+
+---
+
+## Dataset 2: K-Means Clustering
+
+### Step 1: Select Relevant Features
+```{r}
+# Select relevant numerical features for clustering
+data_2_cluster <- Data_2_sliced[, c("total_transactions", "total_sales", "avg_transaction_value")]
+```
+
+### Step 2: Handle Missing Values
+```{r}
+# Remove rows with missing values
+data_2_cluster <- na.omit(data_2_cluster)
+```
+
+### Step 3: Scale the Data
+```{r}
+# Scale numerical features for clustering
+data_2_scaled <- scale(data_2_cluster)
+```
+
+### Step 4: Determine Optimal Number of Clusters using Elbow Method
+```{r}
+# Determine optimal number of clusters using the Elbow Method
+wss <- (nrow(data_2_scaled) - 1) * sum(apply(data_2_scaled, 2, var))
+wss_values <- numeric(10)
+for (i in 1:10) {
+  set.seed(123)
+  wss_values[i] <- kmeans(data_2_scaled, centers = i, nstart = 10)$tot.withinss
+}
+
+# Plot the Elbow Method
+plot(1:10, wss_values, type = "b", pch = 19, frame = FALSE, xlab = "Number of Clusters", ylab = "Total Within-Cluster Sum of Squares", main = "Elbow Method for Optimal K")
+```
+
+### Step 5: Apply K-Means Clustering
+```{r}
+# Apply K-Means clustering with optimal K (assuming 4 clusters)
+set.seed(123)
+kmeans_result_2 <- kmeans(data_2_scaled, centers = 4, nstart = 10)
+
+# Add cluster labels to the original dataset
+Data_2_sliced$Cluster <- as.factor(kmeans_result_2$cluster)
+```
+
+### Step 6: Visualize the Clusters
+```{r}
+# Visualize clusters using a scatter plot
+ggplot(Data_2_sliced, aes(x = total_transactions, y = total_sales, color = Cluster)) +
+  geom_point() +
+  labs(title = "K-Means Clustering for Dataset 2", x = "Total Transactions", y = "Total Sales")
+```
+
+
+# Decision Tree Classification
+
+## Dataset 1: Decision Tree Model
+
+### Step 1: Select Features
+```{r}
+# Select relevant features for classification
+data_1_class <- Data_1_sliced[, c("Total_Purchases", "Amount", "Customer_Segment")]
+```
+
+### Step 2: Handle Missing Values
+```{r}
+# Remove rows with missing values
+data_1_class <- na.omit(data_1_class)
+```
+
+### Step 3: Split Data into Training and Testing Sets
+```{r}
+library(caret)
+set.seed(123)
+trainIndex <- createDataPartition(data_1_class$Customer_Segment, p = 0.7, list = FALSE)
+trainData_1 <- data_1_class[trainIndex, ]
+testData_1 <- data_1_class[-trainIndex, ]
+```
+
+### Step 4: Train Decision Tree Model
+```{r}
+library(rpart)
+model_1 <- rpart(Customer_Segment ~ ., data = trainData_1, method = "class")
+```
+
+### Step 5: Evaluate Model Performance
+
+```{r}
+# Convert empty strings to NA (if needed)
+pred_1[pred_1 == ""] <- NA
+
+# Remove NA values (if any)
+pred_1 <- na.omit(pred_1)
+
+# Convert to a factor
+pred_1 <- factor(pred_1)
+
+
+pred_1 <- factor(pred_1, levels = levels(testData_1$Customer_Segment))
+# Convert empty strings to NA (if needed)
+testData_1$Customer_Segment[testData_1$Customer_Segment == ""] <- NA
+
+# Remove rows where the target variable is NA
+testData_1 <- na.omit(testData_1)
+
+# Convert to a proper factor
+testData_1$Customer_Segment <- factor(testData_1$Customer_Segment)
+
+levels(pred_1)
+levels(testData_1$Customer_Segment)
+```
+
+
+
+```{r}
+# Convert both to factors with matching levels
+pred_1 <- factor(pred_1, levels = levels(testData_1$Customer_Segment))
+testData_1$Customer_Segment <- factor(testData_1$Customer_Segment)
+confusionMatrix(pred_1, testData_1$Customer_Segment)
+```
+
+### Step 6: Visualize Decision Tree
+```{r}
+library(rpart.plot)
+rpart.plot(model_1, box.palette = "BuGn")  # Blue-Green palette
+```
+
+Becaise of the data imbalance the model is predicting only "Regular" and it is having the probability of 0.48 from the distribution but the last results are already 100 % Regular since the prediction is considering only Regular.
+
+
+
+
+---
+
+## Dataset 2: Decision Tree Model
+
+### Step 1: Select Features
+```{r}
+# Select relevant features for classification
+data_2_class <- Data_2_sliced[, c("total_sales", "total_transactions", "customer_city")]
+```
+
+### Step 2: Handle Missing Values
+```{r}
+# Remove rows with missing values
+data_2_class <- na.omit(data_2_class)
+
+# Ensure customer_city is a factor
+data_2_class$customer_city <- as.factor(data_2_class$customer_city)
+```
+
+### Step 3: Split Data into Training and Testing Sets
+```{r}
+set.seed(123)
+trainIndex_2 <- createDataPartition(data_2_class$customer_city, p = 0.7, list = FALSE)
+trainData_2 <- data_2_class[trainIndex_2, ]
+testData_2 <- data_2_class[-trainIndex_2, ]
+```
+
+
+
+### Step 4: Train Decision Tree Model
+```{r}
+model_2 <- rpart(
+  customer_city ~ ., 
+  data = trainData_2, 
+  method = "class", 
+  control = rpart.control(cp = 0.001, maxdepth = 5, minsplit = 10)
+)
+```
+
+### Step 5: Evaluate Model Performance
+```{r}
+pred_2 <- predict(model_2, testData_2, type = "class")
+
+# Ensure predicted values match levels of actual values
+pred_2 <- factor(pred_2, levels = levels(testData_2$customer_city))
+
+# Compute Confusion Matrix
+conf_matrix <- confusionMatrix(pred_2, testData_2$customer_city)
+print(conf_matrix)
+```
+
+### Step 6: Visualize Decision Tree
+```{r}
+rpart.plot(model_2, box.palette = "Blues", tweak = 1.2)
+```
+
+
+## Interpretation of the Decision Tree
+
+### Root Node (City A - 100%)  
+- The entire dataset initially belongs to **City A** (100% distribution).
+- The primary splitting criterion is **total_sales ≥ 3,597**.
+
+### First Split (total_sales ≥ 3,597)  
+- If **total_sales ≥ 3,597**, the classification remains **City A** (65% probability).  
+- If **total_sales < 3,597**, the classification is mostly **City D** (35% probability).  
+
+### Probabilities and Distribution  
+- The numbers inside the nodes (e.g., 0.25, 0.26) represent the probability distribution across different cities.  
+- The **majority class** in each node represents the most likely city assignment.  
+
+### Key Insights  
+- **Total Sales** is the most influential factor in predicting **customer_city**.  
+- When **total_sales is high (≥3,597)**, the customer is more likely from **City A**.  
+- When **total_sales is low (<3,597)**, the customer is more likely from **City D**.  
+- The model is relatively simple, meaning that additional features might improve its predictive power.
 
 
